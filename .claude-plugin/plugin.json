@@ -1,0 +1,13 @@
+{
+  "name": "google-messages",
+  "description": "Google Messages channel for Claude Code — read, search, and reply to SMS/RCS messages via browser automation. Manage setup via /google-messages:setup.",
+  "version": "0.1.0",
+  "keywords": [
+    "google-messages",
+    "sms",
+    "rcs",
+    "messaging",
+    "channel",
+    "mcp"
+  ]
+}
