@@ -132,27 +132,10 @@ export class BrowserBridge {
 
     try {
       await this.page.waitForSelector(SELECTORS.app.mainContainer, { timeout: timeoutMs })
-      this.status = 'ready'
+      // Save session state to disk, then shut down the headed browser.
+      // The next ensureReady() call will relaunch headless with the saved state.
       await this.saveStorageState()
-
-      const storageState = await this.context!.storageState()
       await this.shutdown()
-
-      this.browser = await chromium.launch({ headless: true })
-      this.session.writePid(this.browser.process?.()?.pid ?? 0)
-      this.context = await this.browser.newContext({
-        storageState,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-      })
-      this.page = await this.context.newPage()
-      await this.page.goto('https://messages.google.com/web/conversations', {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000,
-      })
-
-      this.status = 'ready'
-      this.startIdleTimer()
-      this.startHealthChecks()
       return true
     } catch {
       return false
