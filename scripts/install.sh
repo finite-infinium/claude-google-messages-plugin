@@ -35,8 +35,8 @@ try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch {}
 if (!config.mcpServers) config.mcpServers = {};
 config.mcpServers['google-messages'] = {
   type: 'stdio',
-  command: 'npx',
-  args: ['tsx', serverPath]
+  command: 'cmd',
+  args: ['/c', 'npx', 'tsx', serverPath]
 };
 fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 " "$CLAUDE_CONFIG" "$PLUGIN_DIR/src/server.ts"
