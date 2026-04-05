@@ -1,11 +1,11 @@
 ---
-name: setup
+name: google-messages-setup
 description: Set up Google Messages — pair your phone via QR code scanning. Use when the plugin reports it's not paired or on first-time setup.
 user-invocable: true
 allowed-tools:
-  - Read
-  - Bash(bun *)
-  - Bash(ls *)
+  - mcp__google-messages__get_status
+  - mcp__google-messages__pair
+  - mcp__google-messages__pair_complete
 ---
 
 # Google Messages Setup
@@ -21,27 +21,27 @@ Guide the user through pairing their Android phone with the Google Messages plug
 
 3. **If not paired** (status shows "pairing" or "stopped"):
 
-   a. Tell the user:
-   > "I need to pair with your Google Messages app. A browser window will open showing a QR code."
-   > 
+   a. Call the `pair` tool. This launches a headless browser and returns the QR code as an image.
+
+   b. Show the QR code image to the user and tell them:
    > **On your Android phone:**
-   > 1. Open the Google Messages app
+   > 1. Open Google Messages
    > 2. Tap your profile icon (top right)
    > 3. Tap "Device pairing"
    > 4. Tap "QR code scanner"
-   > 5. Scan the QR code shown in the browser window
-   
-   b. The plugin will handle the pairing handshake automatically. Once the QR code is scanned, the browser switches to headless mode and the session is saved.
+   > 5. Scan the QR code shown above
 
-   c. Verify pairing by calling `get_status` again. Confirm success to the user.
+   c. Once the user confirms they've scanned, call `pair_complete` to finalize the pairing.
+
+   d. Verify success and inform the user.
 
 4. **If pairing fails**, suggest:
    - Make sure the phone is connected to the internet
    - Try closing and reopening Google Messages on the phone
-   - Run `/google-messages:setup` again to retry
+   - Run `/google-messages-setup` again to retry
 
 ## Notes
 
 - Pairing persists across sessions — you only need to do this once
 - If Google invalidates the pairing (rare), you'll be prompted to re-scan
-- The browser runs headless after pairing — no visible window during normal use
+- The browser runs headless at all times — no visible window needed

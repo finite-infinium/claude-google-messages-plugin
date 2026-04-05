@@ -49,7 +49,7 @@ export class BrowserBridge {
 
     if (this.status === 'pairing') {
       throw new Error(
-        'Google Messages is not paired. Run /google-messages:setup to scan the QR code.'
+        'Google Messages is not paired. Run /google-messages-setup to scan the QR code.'
       )
     }
 
@@ -70,7 +70,7 @@ export class BrowserBridge {
 
     try {
       this.browser = await chromium.launch({ headless: true })
-      this.session.writePid(this.browser.process()!.pid!)
+      this.session.writePid(this.browser.process?.()?.pid ?? 0)
 
       this.context = await this.browser.newContext({
         storageState: await this.loadStorageState(),
@@ -100,8 +100,8 @@ export class BrowserBridge {
   }
 
   /**
-   * Launch in visible mode for QR code scanning.
-   * Returns the page so the caller can wait for pairing completion.
+   * Launch headless for QR code pairing.
+   * Returns the page so the caller can capture the QR code and wait for pairing.
    */
   async launchForPairing(): Promise<Page> {
     this.session.ensureDirectories()
@@ -109,8 +109,8 @@ export class BrowserBridge {
 
     this.status = 'launching'
 
-    this.browser = await chromium.launch({ headless: false })
-    this.session.writePid(this.browser.process()!.pid!)
+    this.browser = await chromium.launch({ headless: true })
+    this.session.writePid(this.browser.process?.()?.pid ?? 0)
 
     this.context = await this.browser.newContext({
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
@@ -126,6 +126,19 @@ export class BrowserBridge {
     return this.page
   }
 
+  /** Capture the QR code as a base64-encoded PNG. Returns null if no QR code found. */
+  async captureQrCode(): Promise<string | null> {
+    if (!this.page) return null
+    try {
+      await this.page.waitForSelector(SELECTORS.pairing.qrCodeImg, { timeout: 20000 })
+      const qrElement = this.page.locator(SELECTORS.pairing.qrCodeImg).first()
+      const buffer = await qrElement.screenshot()
+      return buffer.toString('base64')
+    } catch {
+      return null
+    }
+  }
+
   /** Wait for pairing to complete after QR scan. */
   async waitForPairing(timeoutMs = 120000): Promise<boolean> {
     if (!this.page) return false
@@ -139,7 +152,7 @@ export class BrowserBridge {
       await this.shutdown()
 
       this.browser = await chromium.launch({ headless: true })
-      this.session.writePid(this.browser.process()!.pid!)
+      this.session.writePid(this.browser.process?.()?.pid ?? 0)
       this.context = await this.browser.newContext({
         storageState,
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
@@ -179,7 +192,7 @@ export class BrowserBridge {
       } catch {}
 
       try {
-        const pid = this.browser.process()?.pid
+        const pid = this.browser.process?.()?.pid
         if (pid) process.kill(pid, 'SIGKILL')
       } catch {}
     }

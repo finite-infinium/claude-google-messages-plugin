@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env npx tsx
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
@@ -100,6 +100,22 @@ export function buildToolDefinitions(): ToolDefinition[] {
       },
     },
     {
+      name: 'pair',
+      description: 'Start the QR code pairing flow. Launches a headless browser, captures the QR code as an image, and returns it for the user to scan.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
+    {
+      name: 'pair_complete',
+      description: 'Wait for an in-progress QR code pairing to complete. Call this after the user has scanned the QR code from the `pair` tool.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
+    {
       name: 'get_status',
       description: 'Check pairing status, current consent mode, and active watchers.',
       inputSchema: {
@@ -161,9 +177,8 @@ export function handleConsentCheck(
 
 // --- Server bootstrap (only runs when executed directly) ---
 
-const isMainModule = typeof Bun !== 'undefined'
-  ? import.meta.main
-  : require.main === module
+const isMainModule = (typeof Bun !== 'undefined' && import.meta.main) ||
+  (typeof Bun === 'undefined' && import.meta.url === `file:///${process.argv[1]?.replace(/\\/g, '/')}`)
 
 if (isMainModule) {
   const session = new SessionManager()
@@ -176,14 +191,28 @@ if (isMainModule) {
     {
       capabilities: { tools: {} },
       instructions: [
-        'Google Messages plugin — read, search, and reply to SMS/RCS messages.',
+        'Google Messages plugin — read, search, and reply to SMS/RCS messages via browser automation of messages.google.com.',
         '',
-        'Tools prefixed with google-messages. Read-only tools (list_conversations, read_messages, search_messages) work immediately. Write tools (send_message, reply) require consent:',
+        '## Tools',
+        'Read-only tools (list_conversations, read_messages, search_messages, get_status) work immediately.',
+        'Write tools (send_message, reply) require consent:',
         '- Default "approve" mode: returns a draft preview. Re-call with confirmed=true to send.',
         '- "trust" mode: sends immediately. Enable with set_consent_mode("trust"). Resets on session end.',
-        '',
-        'First-time setup: run /google-messages:setup to pair via QR code.',
         'Messages include sender name, text, timestamp, and media indicators.',
+        '',
+        '## First-time setup',
+        'If get_status shows the plugin is not paired, guide the user through pairing:',
+        '1. A browser window will open showing a QR code from messages.google.com.',
+        '2. On the Android phone: open Google Messages > tap profile icon (top right) > Device pairing > QR code scanner.',
+        '3. Scan the QR code. The plugin handles the rest — browser switches to headless and session is saved.',
+        '4. Pairing persists across sessions. Re-scan only needed if Google invalidates it (rare).',
+        '',
+        '## Consent modes',
+        '- "approve" (default): send_message and reply return a draft preview first. Call again with confirmed=true to send.',
+        '- "trust": messages send immediately. Useful for batch operations or when user grants standing permission.',
+        '- Trust mode resets to "approve" at the start of each new session.',
+        '- Read-only tools never require consent.',
+        '- Check current mode with get_status. Change with set_consent_mode.',
       ].join('\n'),
     },
   )
@@ -214,6 +243,54 @@ if (isMainModule) {
     const args = (req.params.arguments ?? {}) as Record<string, unknown>
     try {
       switch (req.params.name) {
+        case 'pair': {
+          const currentStatus = bridge.getStatus()
+          if (currentStatus === 'ready') {
+            return { content: [{ type: 'text', text: 'Already paired and ready. No action needed.' }] }
+          }
+
+          // Launch headless and capture QR code
+          await bridge.launchForPairing()
+          const qrBase64 = await bridge.captureQrCode()
+
+          if (!qrBase64) {
+            // No QR code found — might already be paired
+            const recheckStatus = bridge.getStatus()
+            if (recheckStatus === 'ready') {
+              return { content: [{ type: 'text', text: 'Already paired! No QR code needed.' }] }
+            }
+            return { content: [{ type: 'text', text: 'Could not capture QR code. The Google Messages pairing page may have changed.' }], isError: true }
+          }
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Scan this QR code with your Android phone:\n1. Open Google Messages\n2. Tap your profile icon (top right)\n3. Tap "Device pairing"\n4. Tap "QR code scanner"\n5. Scan the code below\n\nOnce scanned, call the `pair_complete` tool to finish pairing.',
+              },
+              {
+                type: 'image',
+                data: qrBase64,
+                mimeType: 'image/png',
+              },
+            ],
+          }
+        }
+
+        case 'pair_complete': {
+          if (bridge.getStatus() === 'ready') {
+            return { content: [{ type: 'text', text: 'Already paired and ready.' }] }
+          }
+          if (bridge.getStatus() !== 'pairing') {
+            return { content: [{ type: 'text', text: 'No pairing in progress. Call `pair` first.' }], isError: true }
+          }
+          const success = await bridge.waitForPairing(120000)
+          if (success) {
+            return { content: [{ type: 'text', text: 'Pairing successful! Google Messages is now connected.' }] }
+          }
+          return { content: [{ type: 'text', text: 'Pairing timed out. Please try again by calling `pair`.' }], isError: true }
+        }
+
         case 'get_status': {
           const status = bridge.getStatus()
           const watchers = watcher.listWatchers()

@@ -6,7 +6,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-MCP_CONFIG="$HOME/.claude/.mcp.json"
+CLAUDE_CONFIG="$HOME/.claude.json"
 DATA_DIR="$HOME/.claude/google-messages"
 
 echo "=== Google Messages MCP Plugin Installer ==="
@@ -17,36 +17,38 @@ echo ""
 # 1. Install Node dependencies
 echo "[1/4] Installing dependencies..."
 cd "$PLUGIN_DIR"
-bun install
+npm install
 
 # 2. Install Playwright Chromium
 echo "[2/4] Installing Chromium for Playwright..."
-bunx playwright install chromium
+npx playwright install chromium
 
-# 3. Register MCP server in ~/.claude/.mcp.json
+# 3. Register MCP server in ~/.claude.json (global Claude Code config)
 echo "[3/4] Registering MCP server..."
-mkdir -p "$(dirname "$MCP_CONFIG")"
 
-# Read existing config or start fresh
-if [ -f "$MCP_CONFIG" ]; then
-  EXISTING=$(cat "$MCP_CONFIG")
-else
-  EXISTING='{"mcpServers":{}}'
-fi
-
-# Use bun to merge the config (avoids jq dependency)
-NEW_CONFIG=$(bun -e "
-const existing = JSON.parse(\`$EXISTING\`);
-existing.mcpServers = existing.mcpServers || {};
-existing.mcpServers['google-messages'] = {
-  command: 'bun',
-  args: ['run', '--cwd', '$PLUGIN_DIR', '--shell=bun', '--silent', 'start']
+node -e "
+const fs = require('fs');
+const configPath = process.argv[1];
+const serverPath = process.argv[2];
+let config = {};
+try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch {}
+if (!config.mcpServers) config.mcpServers = {};
+config.mcpServers['google-messages'] = {
+  type: 'stdio',
+  command: 'npx',
+  args: ['tsx', serverPath]
 };
-console.log(JSON.stringify(existing, null, 2));
-")
+fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+" "$CLAUDE_CONFIG" "$PLUGIN_DIR/src/server.ts"
 
-echo "$NEW_CONFIG" > "$MCP_CONFIG"
-echo "  Registered in $MCP_CONFIG"
+echo "  Registered MCP server in $CLAUDE_CONFIG"
+
+# 3b. Install global skills to ~/.claude/skills/
+SKILLS_DIR="$HOME/.claude/skills"
+mkdir -p "$SKILLS_DIR/google-messages-setup" "$SKILLS_DIR/google-messages-access"
+cp "$PLUGIN_DIR/skills/setup/SKILL.md" "$SKILLS_DIR/google-messages-setup/SKILL.md"
+cp "$PLUGIN_DIR/skills/access/SKILL.md" "$SKILLS_DIR/google-messages-access/SKILL.md"
+echo "  Installed skills to $SKILLS_DIR"
 
 # 4. Create data directories
 echo "[4/4] Creating data directories..."
@@ -70,5 +72,5 @@ echo "=== Installation complete ==="
 echo ""
 echo "Next steps:"
 echo "  1. Restart Claude Code (or start a new session)"
-echo "  2. Run /google-messages:setup to pair your phone"
+echo "  2. Run /google-messages-setup to pair your phone"
 echo ""
