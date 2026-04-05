@@ -3,4 +3,5 @@ dist/
 bun.lockb
 bun.lock
 .superpowers/
+.playwright-mcp/
 *.pid

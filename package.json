@@ -5,12 +5,14 @@
   "type": "module",
   "bin": "./src/server.ts",
   "scripts": {
-    "start": "bun install --no-summary && bun src/server.ts",
+    "start": "npx tsx src/server.ts",
+    "pair": "npx tsx scripts/pair.ts",
     "test": "bun test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "playwright": "^1.52.0"
+    "playwright": "^1.52.0",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/bun": "latest",

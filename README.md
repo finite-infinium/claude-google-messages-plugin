@@ -13,19 +13,30 @@ Read, search, and reply to your SMS/RCS messages from any Claude Code session vi
 ## Quick Install
 
 ```bash
-git clone <repo-url> ~/claude-google-messages-plugin
+git clone https://github.com/finite-infinium/claude-google-messages-plugin.git ~/claude-google-messages-plugin
 cd ~/claude-google-messages-plugin
 bash scripts/install.sh
 ```
 
-Then restart Claude Code and run `/google-messages:setup` to pair your phone.
+Then restart Claude Code and run `/google-messages-setup` to pair your phone.
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org) v18+
+- Google Messages Android app on your phone
+- Phone and PC on the same network (for initial pairing)
 
 ## Setup
 
-1. Run `/google-messages:setup` in Claude Code
-2. A browser window opens with a QR code
-3. On your Android phone: Google Messages → Profile → Device pairing → QR code scanner
-4. Scan the code — done! The browser goes headless and you're paired.
+1. Run `/google-messages-setup` in Claude Code
+2. The plugin captures a QR code and displays it inline
+3. On your Android phone: Google Messages > Profile > Device pairing > QR code scanner
+4. Scan the code — done! The session is saved for headless use going forward.
+
+Alternatively, run the standalone pairing script:
+```bash
+npx tsx scripts/pair.ts
+```
 
 ## Usage
 
@@ -50,6 +61,8 @@ Then restart Claude Code and run `/google-messages:setup` to pair your phone.
 
 | Tool | Description |
 |------|-------------|
+| `pair` | Start QR code pairing (returns QR image inline) |
+| `pair_complete` | Finalize pairing after QR scan |
 | `list_conversations` | Recent conversations with previews |
 | `read_messages` | Read a conversation thread |
 | `search_messages` | Search across all conversations |
@@ -61,8 +74,8 @@ Then restart Claude Code and run `/google-messages:setup` to pair your phone.
 | `watch_conversation` | Start real-time monitoring |
 | `unwatch_conversation` | Stop monitoring |
 
-## Requirements
+## Architecture
 
-- [Bun](https://bun.sh) runtime
-- Google Messages Android app on your phone
-- Phone and PC on the same network (for initial pairing)
+The plugin runs as an MCP server using Node.js with [tsx](https://github.com/privatenumber/tsx) for TypeScript support. It automates [messages.google.com](https://messages.google.com) via [Playwright](https://playwright.dev) (headless Chromium).
+
+> **Note:** [Bun](https://bun.sh) is not used as the runtime due to a [confirmed bug](https://github.com/oven-sh/bun/issues/15679) on Windows where Chromium's CDP pipe communication hangs. Tests still use Bun's test runner (`bun test`).
