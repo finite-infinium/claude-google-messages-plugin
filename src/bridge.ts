@@ -100,8 +100,8 @@ export class BrowserBridge {
   }
 
   /**
-   * Launch headless for QR code pairing.
-   * Returns the page so the caller can capture the QR code and wait for pairing.
+   * Launch a visible browser for QR code pairing.
+   * The user scans the QR code directly from the browser window.
    */
   async launchForPairing(): Promise<Page> {
     this.session.ensureDirectories()
@@ -109,7 +109,7 @@ export class BrowserBridge {
 
     this.status = 'launching'
 
-    this.browser = await chromium.launch({ headless: true })
+    this.browser = await chromium.launch({ headless: false })
     this.session.writePid(this.browser.process?.()?.pid ?? 0)
 
     this.context = await this.browser.newContext({
@@ -124,19 +124,6 @@ export class BrowserBridge {
 
     this.status = 'pairing'
     return this.page
-  }
-
-  /** Capture the QR code as a base64-encoded PNG. Returns null if no QR code found. */
-  async captureQrCode(): Promise<string | null> {
-    if (!this.page) return null
-    try {
-      await this.page.waitForSelector(SELECTORS.pairing.qrCodeImg, { timeout: 20000 })
-      const qrElement = this.page.locator(SELECTORS.pairing.qrCodeImg).first()
-      const buffer = await qrElement.screenshot()
-      return buffer.toString('base64')
-    } catch {
-      return null
-    }
   }
 
   /** Wait for pairing to complete after QR scan. */

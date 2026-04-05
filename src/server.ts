@@ -6,10 +6,6 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-import { exec } from 'child_process'
-import { tmpdir } from 'os'
-import { join } from 'path'
-import { writeFileSync } from 'fs'
 import { BrowserBridge } from './bridge'
 import { SessionManager } from './session'
 import { WatcherManager } from './watcher'
@@ -105,7 +101,7 @@ export function buildToolDefinitions(): ToolDefinition[] {
     },
     {
       name: 'pair',
-      description: 'Start the QR code pairing flow. Launches a headless browser, captures the QR code as an image, and returns it for the user to scan.',
+      description: 'Start the QR code pairing flow. Opens a visible browser window showing the Google Messages pairing page with QR code for the user to scan.',
       inputSchema: {
         type: 'object',
         properties: {},
@@ -253,28 +249,13 @@ if (isMainModule) {
             return { content: [{ type: 'text', text: 'Already paired and ready. No action needed.' }] }
           }
 
-          // Launch headless and capture QR code
+          // Launch visible browser showing Google Messages pairing page
           await bridge.launchForPairing()
-          const qrBase64 = await bridge.captureQrCode()
-
-          if (!qrBase64) {
-            // No QR code found — might already be paired
-            const recheckStatus = bridge.getStatus()
-            if (recheckStatus === 'ready') {
-              return { content: [{ type: 'text', text: 'Already paired! No QR code needed.' }] }
-            }
-            return { content: [{ type: 'text', text: 'Could not capture QR code. The Google Messages pairing page may have changed.' }], isError: true }
-          }
-
-          // Save QR code to temp file and open in default image viewer
-          const qrPath = join(tmpdir(), 'google-messages-qr.png')
-          writeFileSync(qrPath, Buffer.from(qrBase64, 'base64'))
-          exec(`start "" "${qrPath}"`)
 
           return {
             content: [{
               type: 'text',
-              text: `QR code opened in your image viewer (${qrPath}).\n\nScan it with your Android phone:\n1. Open Google Messages\n2. Tap your profile icon (top right)\n3. Tap "Device pairing"\n4. Tap "QR code scanner"\n5. Scan the QR code\n\nOnce scanned, call the \`pair_complete\` tool to finish pairing.`,
+              text: 'A browser window has opened showing the Google Messages pairing page.\n\nScan the QR code with your Android phone:\n1. Open Google Messages\n2. Tap your profile icon (top right)\n3. Tap "Device pairing"\n4. Tap "QR code scanner"\n5. Scan the QR code in the browser window\n\nOnce scanned, call the `pair_complete` tool to finish pairing.',
             }],
           }
         }
