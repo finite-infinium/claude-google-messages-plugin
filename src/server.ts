@@ -6,6 +6,10 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
+import { exec } from 'child_process'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { writeFileSync } from 'fs'
 import { BrowserBridge } from './bridge'
 import { SessionManager } from './session'
 import { WatcherManager } from './watcher'
@@ -262,18 +266,16 @@ if (isMainModule) {
             return { content: [{ type: 'text', text: 'Could not capture QR code. The Google Messages pairing page may have changed.' }], isError: true }
           }
 
+          // Save QR code to temp file and open in default image viewer
+          const qrPath = join(tmpdir(), 'google-messages-qr.png')
+          writeFileSync(qrPath, Buffer.from(qrBase64, 'base64'))
+          exec(`start "" "${qrPath}"`)
+
           return {
-            content: [
-              {
-                type: 'text',
-                text: 'Scan this QR code with your Android phone:\n1. Open Google Messages\n2. Tap your profile icon (top right)\n3. Tap "Device pairing"\n4. Tap "QR code scanner"\n5. Scan the code below\n\nOnce scanned, call the `pair_complete` tool to finish pairing.',
-              },
-              {
-                type: 'image',
-                data: qrBase64,
-                mimeType: 'image/png',
-              },
-            ],
+            content: [{
+              type: 'text',
+              text: `QR code opened in your image viewer (${qrPath}).\n\nScan it with your Android phone:\n1. Open Google Messages\n2. Tap your profile icon (top right)\n3. Tap "Device pairing"\n4. Tap "QR code scanner"\n5. Scan the QR code\n\nOnce scanned, call the \`pair_complete\` tool to finish pairing.`,
+            }],
           }
         }
 
