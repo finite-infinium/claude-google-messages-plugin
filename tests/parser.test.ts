@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { parseConversationList, parseMessageThread, parseTimestamp } from '../src/parser'
 
 const CONVERSATION_LIST_HTML = `

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import { buildToolDefinitions, handleConsentCheck } from '../src/server'
 import type { ConsentMode } from '../src/types'
 

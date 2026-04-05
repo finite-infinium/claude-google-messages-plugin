@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test'
+import { describe, expect, it } from 'vitest'
 import type { Conversation, Message, MediaAttachment, PluginConfig, ConsentMode } from '../src/types'
 
 describe('types', () => {

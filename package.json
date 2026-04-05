@@ -7,7 +7,7 @@
   "scripts": {
     "start": "npx tsx src/server.ts",
     "pair": "npx tsx scripts/pair.ts",
-    "test": "bun test"
+    "test": "vitest run"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
@@ -15,7 +15,7 @@
     "tsx": "^4.21.0"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.2"
   }
 }
